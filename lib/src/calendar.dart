@@ -4,7 +4,7 @@
 part of table_calendar;
 
 /// Callback exposing currently selected day.
-typedef void OnDaySelected(DateTime day, List events, List holidays);
+typedef void OnDaySelected(DateTime day, List events);
 
 /// Callback exposing currently visible days (first and last of them), as well as current `CalendarFormat`.
 typedef void OnVisibleDaysChanged(DateTime first, DateTime last, CalendarFormat format);
@@ -244,19 +244,11 @@ class _TableCalendarState extends State<TableCalendar> with SingleTickerProvider
     if (oldWidget.holidays != widget.holidays) {
       widget.calendarController._holidays = widget.holidays;
     }
-
-    if (oldWidget.availableCalendarFormats != widget.availableCalendarFormats) {
-      widget.calendarController._availableCalendarFormats = widget.availableCalendarFormats;
-    }
   }
 
   void _selectedDayCallback(DateTime day) {
     if (widget.onDaySelected != null) {
-      widget.onDaySelected(
-        day,
-        widget.calendarController.visibleEvents[_getEventKey(day)] ?? [],
-        widget.calendarController.visibleHolidays[_getHolidayKey(day)] ?? [],
-      );
+      widget.onDaySelected(day, widget.calendarController.visibleEvents[_getEventKey(day)] ?? []);
     }
   }
 
@@ -281,11 +273,7 @@ class _TableCalendarState extends State<TableCalendar> with SingleTickerProvider
 
   void _onDayLongPressed(DateTime day) {
     if (widget.onDayLongPressed != null) {
-      widget.onDayLongPressed(
-        day, 
-        widget.calendarController.visibleEvents[_getEventKey(day)] ?? [],
-        widget.calendarController.visibleHolidays[_getHolidayKey(day)] ?? [],
-      );
+      widget.onDayLongPressed(day, widget.calendarController.visibleEvents[_getEventKey(day)] ?? []);
     }
   }
 
@@ -365,13 +353,12 @@ class _TableCalendarState extends State<TableCalendar> with SingleTickerProvider
 
   Widget _buildHeader() {
     final children = [
-      widget.headerStyle.showLeftChevron ?
-        _CustomIconButton(
-          icon: widget.headerStyle.leftChevronIcon,
-          onTap: _selectPrevious,
-          margin: widget.headerStyle.leftChevronMargin,
-          padding: widget.headerStyle.leftChevronPadding,
-        ) : Container(),
+      _CustomIconButton(
+        icon: widget.headerStyle.leftChevronIcon,
+        onTap: _selectPrevious,
+        margin: widget.headerStyle.leftChevronMargin,
+        padding: widget.headerStyle.leftChevronPadding,
+      ),
       Expanded(
         child: GestureDetector(
           onTap: _onHeaderTapped,
@@ -385,13 +372,12 @@ class _TableCalendarState extends State<TableCalendar> with SingleTickerProvider
           ),
         ),
       ),
-      widget.headerStyle.showRightChevron ?
-        _CustomIconButton(
-          icon: widget.headerStyle.rightChevronIcon,
-          onTap: _selectNext,
-          margin: widget.headerStyle.rightChevronMargin,
-          padding: widget.headerStyle.rightChevronPadding,
-        ) : Container()
+      _CustomIconButton(
+        icon: widget.headerStyle.rightChevronIcon,
+        onTap: _selectNext,
+        margin: widget.headerStyle.rightChevronMargin,
+        padding: widget.headerStyle.rightChevronPadding,
+      ),
     ];
 
     if (widget.headerStyle.formatButtonVisible && widget.availableCalendarFormats.length > 1) {
@@ -502,7 +488,7 @@ class _TableCalendarState extends State<TableCalendar> with SingleTickerProvider
       transitionBuilder: (child, animation) {
         return SlideTransition(
           position:
-              Tween<Offset>(begin: Offset(widget.calendarController._dx, 0), end: Offset(0, 0)).animate(animation),
+          Tween<Offset>(begin: Offset(widget.calendarController._dx, 0), end: Offset(0, 0)).animate(animation),
           child: child,
         );
       },
@@ -538,7 +524,6 @@ class _TableCalendarState extends State<TableCalendar> with SingleTickerProvider
 
   TableRow _buildDaysOfWeek() {
     return TableRow(
-      decoration: widget.daysOfWeekStyle.decoration,
       children: widget.calendarController._visibleDays.value.take(7).map((date) {
         final weekdayString = widget.daysOfWeekStyle.dowTextBuilder != null
             ? widget.daysOfWeekStyle.dowTextBuilder(date, widget.locale)
@@ -562,10 +547,7 @@ class _TableCalendarState extends State<TableCalendar> with SingleTickerProvider
   }
 
   TableRow _buildTableRow(List<DateTime> days) {
-    return TableRow(
-      decoration: widget.calendarStyle.contentDecoration,
-      children: days.map((date) => _buildTableCell(date)).toList(),
-    );
+    return TableRow(children: days.map((date) => _buildTableCell(date)).toList());
   }
 
   // TableCell will have equal width and height
@@ -654,7 +636,6 @@ class _TableCalendarState extends State<TableCalendar> with SingleTickerProvider
     final tIsOutside = widget.calendarController._isExtraDay(date);
     final tIsHoliday = widget.calendarController.visibleHolidays.containsKey(_getHolidayKey(date));
     final tIsWeekend = widget.calendarController._isWeekend(date, widget.weekendDays);
-    final tIsEventDay = widget.calendarController.visibleEvents.containsKey(eventKey);
 
     final isUnavailable = widget.builders.unavailableDayBuilder != null && tIsUnavailable;
     final isSelected = widget.builders.selectedDayBuilder != null && tIsSelected;
@@ -695,7 +676,6 @@ class _TableCalendarState extends State<TableCalendar> with SingleTickerProvider
         isWeekend: tIsWeekend,
         isOutsideMonth: tIsOutside,
         isHoliday: tIsHoliday,
-        isEventDay: tIsEventDay,
         calendarStyle: widget.calendarStyle,
       );
     }
@@ -711,7 +691,7 @@ class _TableCalendarState extends State<TableCalendar> with SingleTickerProvider
         margin: const EdgeInsets.symmetric(horizontal: 0.3),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: widget.calendarStyle.markersColor,
+          color: event.color,
         ),
       );
     }
